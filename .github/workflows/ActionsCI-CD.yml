@@ -56,14 +56,15 @@ jobs:
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAG_SSH_PRIV_KEY }}
+          key: ${{ secrets.PEM_KEY }}
           script: |
             cd GithubAction-Python
-            git fetch origin staging
-            git reset --hard origin/staging
+            git config --global --add safe.directory /home/***/GithubAction-Python
+            git pull origin staging
             pip install -r requirements.txt
-            systemctl restart myapp.service
+            nohup python3 app.py > app.log 2>&1 &
 
+            
   promote-to-main:
     needs: deploy-staging
     if: |
@@ -105,10 +106,10 @@ jobs:
         with:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
-          key: ${{ secrets.PROD_SSH_PRIV_KEY }}
+          key: ${{ secrets.PEM_KEY }}
           script: |
             cd GithubAction-Python
-            git fetch origin main
-            git reset --hard origin/main
+            git config --global --add safe.directory /home/***/GithubAction-Python
+            git pull origin main
             pip install -r requirements.txt
-            systemctl restart myapp.service
+            nohup python3 app.py > app.log 2>&1 &
