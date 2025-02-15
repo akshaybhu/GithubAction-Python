@@ -63,8 +63,8 @@ jobs:
             git fetch origin staging
             git reset --hard origin/staging
             pip install -r requirements.txt
-            sudo systemctl restart myapp.service
 
+            
   promote-to-main:
     needs: deploy-staging
     if: |
@@ -113,4 +113,3 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             pip install -r requirements.txt
-            sudo systemctl restart myapp.service
