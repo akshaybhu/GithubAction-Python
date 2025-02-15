@@ -59,10 +59,11 @@ jobs:
           key: ${{ secrets.PEM_KEY }}
           script: |
             cd GithubAction-Python
+            git config --global --add safe.directory /home/***/GithubAction-Python
             git fetch origin staging
             git reset --hard origin/staging
             pip install -r requirements.txt
-            systemctl restart myapp.service
+            sudo systemctl restart myapp.service
 
   promote-to-main:
     needs: deploy-staging
@@ -108,7 +109,8 @@ jobs:
           key: ${{ secrets.PEM_KEY }}
           script: |
             cd GithubAction-Python
+            git config --global --add safe.directory /home/***/GithubAction-Python
             git fetch origin main
             git reset --hard origin/main
             pip install -r requirements.txt
-            systemctl restart myapp.service
+            sudo systemctl restart myapp.service
