@@ -5,6 +5,11 @@ on:
     branches:
       - main
       - staging
+  pull_request:
+    types: [closed]
+    branches:
+      - staging
+      - main
   release:
     types: [published]
 
@@ -24,20 +29,26 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run Tests
+        id: tests
         run: pytest --junitxml=test-results.xml
 
-      - name: Build  # This step is now explicit (good practice)
-        if: steps.Run_Tests.outcome == 'success'  # Only build if tests pass
-        run: echo "Building the application..." # Replace with your actual build commands
-        # ... your build steps here ...
+      - name: Build
+        if: success()
+        run: |
+          echo "Building the application..."
+          # Add your build steps here
+          # Example: python setup.py build
 
   deploy-staging:
-    needs: build  # Correct dependency
-    if: github.ref == 'refs/heads/staging' && needs.build.outcome == 'success' # Correct conditional and dependency
+    needs: build
+    if: |
+      (github.ref == 'refs/heads/staging' && github.event_name == 'push') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && 
+       github.event.pull_request.base.ref == 'staging')
     runs-on: ubuntu-latest
-    environment: staging # Add environment context
+    environment: staging
     steps:
-      - name: Checkout Code # Add checkout step
+      - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: SSH into STAGING host and Deploy to EC2
@@ -48,17 +59,45 @@ jobs:
           key: ${{ secrets.STAG_SSH_PRIV_KEY }}
           script: |
             cd GithubAction-Python
-            git pull origin staging
+            git fetch origin staging
+            git reset --hard origin/staging
             pip install -r requirements.txt
-            nohup python3 app.py > app.log 2>&1 &
+            systemctl restart myapp.service
+
+  promote-to-main:
+    needs: deploy-staging
+    if: |
+      success() && 
+      github.event_name == 'pull_request' && 
+      github.event.pull_request.merged == true && 
+      github.event.pull_request.base.ref == 'staging'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create PR to main
+        uses: peter-evans/create-pull-request@v5
+        with:
+          title: 'Promote staging to main'
+          body: 'Automated PR to promote changes from staging to main'
+          branch: promote-to-main
+          base: main
+          labels: automated-pr
 
   deploy-production:
-    needs: build  # Correct dependency
-    if: startsWith(github.ref, 'refs/tags/') && needs.build.outcome == 'success' # Correct conditional and dependency
+    needs: build
+    if: |
+      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && 
+       github.event.pull_request.base.ref == 'main')
     runs-on: ubuntu-latest
-    environment: production # Add environment context
+    environment: production
     steps:
-      - name: Checkout Code # Add checkout step
+      - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: SSH into PROD host and Deploy to EC2
@@ -69,6 +108,7 @@ jobs:
           key: ${{ secrets.PROD_SSH_PRIV_KEY }}
           script: |
             cd GithubAction-Python
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             pip install -r requirements.txt
-            nohup python3 app.py > app.log 2>&1 &
+            systemctl restart myapp.service
