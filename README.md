@@ -6,7 +6,6 @@ Objective:
 
 Implement a CI/CD workflow using GitHub Actions for a Python application.
 
-Setup
 
 
 
