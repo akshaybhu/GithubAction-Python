@@ -60,9 +60,9 @@ jobs:
           script: |
             cd GithubAction-Python
             git config --global --add safe.directory /home/***/GithubAction-Python
-            git fetch origin staging
-            git reset --hard origin/staging
+            git pull origin staging
             pip install -r requirements.txt
+            nohup python3 app.py > app.log 2>&1 &
 
             
   promote-to-main:
@@ -110,6 +110,6 @@ jobs:
           script: |
             cd GithubAction-Python
             git config --global --add safe.directory /home/***/GithubAction-Python
-            git fetch origin main
-            git reset --hard origin/main
+            git pull origin main
             pip install -r requirements.txt
+            nohup python3 app.py > app.log 2>&1 &
